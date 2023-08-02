@@ -8,6 +8,7 @@ pub struct Claims {
     pub exp: usize,
 }
 
+#[allow(unused)]
 pub fn generate_token(user: String, secret: String, expiration_date: DateTime<Utc>) -> String {
     let claims: Claims = Claims {
         exp: expiration_date.timestamp() as usize,
@@ -19,6 +20,7 @@ pub fn generate_token(user: String, secret: String, expiration_date: DateTime<Ut
     encode(&header, &claims, &encoding_key).unwrap()
 }
 
+#[allow(unused)]
 pub fn validate_token(token: String, secret: String) -> Option<Claims> {
     let decoding_key: DecodingKey = DecodingKey::from_secret(secret.as_ref());
     let validation = Validation::new(Algorithm::HS256);
