@@ -1,17 +1,27 @@
-mod routes;
+mod api;
+mod models;
 mod token;
 mod utils;
 
-use actix_web::{App, HttpServer};
+use actix_web::{web, App, HttpServer};
+use api::{login_user, register_user};
 use dotenv::dotenv;
-use routes::{echo, hello};
+use utils::get_env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    HttpServer::new(|| App::new().service(hello).service(echo))
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await
+    let server_url = get_env("SERVER_URL");
+
+    HttpServer::new(move || {
+        App::new().service(
+            web::scope("/app")
+                .route("/login", web::post().to(login_user))
+                .route("/register", web::post().to(register_user)),
+        )
+    })
+    .bind(server_url)?
+    .run()
+    .await
 }
