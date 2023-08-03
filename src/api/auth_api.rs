@@ -7,11 +7,14 @@ use chrono::{Duration, Utc};
 
 use crate::{
     models::{Credentials, User},
+    repository::user_repository::db_login_user,
     token::generate_token,
     utils::get_env,
 };
 
 pub async fn login_user(credentials: Json<Credentials>) -> HttpResponse {
+    // db_login_user(db, credentials)
+
     // Replace for user id from database
     let test_id = "123456".to_string();
 
