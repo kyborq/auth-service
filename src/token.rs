@@ -14,6 +14,7 @@ pub fn generate_token(user: String, secret: String, expiration_date: DateTime<Ut
         exp: expiration_date.timestamp() as usize,
         user,
     };
+
     let header: Header = Header::new(Algorithm::HS256);
     let encoding_key: EncodingKey = EncodingKey::from_secret(secret.as_ref());
 
