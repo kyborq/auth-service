@@ -1,9 +1,10 @@
 use actix_web::{
     cookie::{Cookie, SameSite},
-    web::Json,
+    web::{Data, Json},
     HttpResponse,
 };
 use chrono::{Duration, Utc};
+use mongodb::Database;
 
 use crate::{
     models::{Credentials, User},
@@ -12,8 +13,16 @@ use crate::{
     utils::get_env,
 };
 
-pub async fn login_user(credentials: Json<Credentials>) -> HttpResponse {
-    // db_login_user(db, credentials)
+pub async fn login_user(db: Data<Database>, credentials: Json<Credentials>) -> HttpResponse {
+    let user_credentials = Credentials {
+        login: credentials.login.clone(),
+        password: credentials.password.clone(),
+    };
+    let result = db_login_user(db.as_ref(), user_credentials).await;
+
+    if Option::is_none(&result) {
+        return HttpResponse::Forbidden().into();
+    }
 
     // Replace for user id from database
     let test_id = "123456".to_string();

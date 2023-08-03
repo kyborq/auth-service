@@ -8,7 +8,6 @@ pub struct Claims {
     pub exp: usize,
 }
 
-#[allow(unused)]
 pub fn generate_token(user: String, secret: String, expiration_date: DateTime<Utc>) -> String {
     let claims: Claims = Claims {
         exp: expiration_date.timestamp() as usize,
