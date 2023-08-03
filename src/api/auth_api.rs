@@ -3,14 +3,12 @@ use actix_web::{
     web::{Data, Json},
     HttpResponse,
 };
-use chrono::{Duration, Utc};
-use mongodb::Database;
+use mongodb::{bson::oid::ObjectId, Database};
 
 use crate::{
     models::{Credentials, User},
     repository::user_repository::db_login_user,
-    token::generate_token,
-    utils::get_env,
+    services::token_service::generate_tokens,
 };
 
 pub async fn login_user(db: Data<Database>, credentials: Json<Credentials>) -> HttpResponse {
@@ -20,37 +18,34 @@ pub async fn login_user(db: Data<Database>, credentials: Json<Credentials>) -> H
     };
     let result = db_login_user(db.as_ref(), user_credentials).await;
 
-    if Option::is_none(&result) {
-        return HttpResponse::Forbidden().into();
+    match result {
+        Some(user) => {
+            let id = user.id.to_string();
+
+            let tokens = generate_tokens(id);
+
+            let cookie = Cookie::build("token", tokens.refresh_token)
+                .same_site(SameSite::None)
+                .path("/")
+                .secure(true)
+                .http_only(true)
+                .finish();
+
+            HttpResponse::Ok()
+                .cookie(cookie)
+                .json(format!("{{ 'access': '{}' }}", tokens.access_token))
+        }
+        None => {
+            // Handle error there
+            // Possible states: User is not found, password is not correct and other errors
+            HttpResponse::Forbidden().into()
+        }
     }
-
-    // Replace for user id from database
-    let test_id = "123456".to_string();
-
-    // To Local Storage on Client
-    let access_secret = get_env("JWT_ACCESS_SECRET");
-    let access_expiration = Utc::now() + Duration::minutes(30);
-    let access_token = generate_token(test_id.clone(), access_secret, access_expiration);
-
-    //  To HTTP Only Cookie
-    let refresh_secret = get_env("JWT_REFRESH_SECRET");
-    let refresh_expiration = Utc::now() + Duration::days(7);
-    let refresh_token: String = generate_token(test_id.clone(), refresh_secret, refresh_expiration);
-
-    let cookie = Cookie::build("token", refresh_token)
-        .same_site(SameSite::None)
-        .path("/")
-        .secure(true)
-        .http_only(true)
-        .finish();
-
-    HttpResponse::Ok()
-        .cookie(cookie)
-        .json(format!("{{ 'access': '{}' }}", access_token))
 }
 
 pub async fn register_user(credentials: Json<Credentials>) -> HttpResponse {
     let new_user = User {
+        id: ObjectId::new(),
         login: credentials.login.clone(),
         password: credentials.password.clone(),
     };

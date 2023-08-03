@@ -2,7 +2,7 @@ mod api;
 mod database;
 mod models;
 mod repository;
-mod token;
+mod services;
 mod utils;
 
 use actix_web::{
