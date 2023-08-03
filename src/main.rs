@@ -1,5 +1,6 @@
 mod api;
 mod models;
+mod repository;
 mod token;
 mod utils;
 
