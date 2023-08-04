@@ -3,20 +3,31 @@ use actix_web::{
     web::{Data, Json},
     HttpResponse,
 };
-use mongodb::{bson::oid::ObjectId, Database};
+use mongodb::Database;
+use serde::Serialize;
 
 use crate::{
     models::{Credentials, User},
-    repository::user_repository::db_login_user,
+    repository::user_repository::{db_login_user, db_register_user},
     services::token_service::generate_tokens,
 };
 
+#[derive(Serialize)]
+pub struct LoginResult {
+    pub user: User,
+    pub token: String,
+}
+
+#[derive(Serialize)]
+pub struct ErrorResult {
+    pub code: String,
+    pub message: String,
+}
+
 pub async fn login_user(db: Data<Database>, credentials: Json<Credentials>) -> HttpResponse {
-    let user_credentials = Credentials {
-        login: credentials.login.clone(),
-        password: credentials.password.clone(),
-    };
-    let result = db_login_user(db.as_ref(), user_credentials).await;
+    let credentials = credentials.into_inner();
+
+    let result = db_login_user(db.as_ref(), credentials).await;
 
     match result {
         Some(user) => {
@@ -31,29 +42,36 @@ pub async fn login_user(db: Data<Database>, credentials: Json<Credentials>) -> H
                 .http_only(true)
                 .finish();
 
-            HttpResponse::Ok()
-                .cookie(cookie)
-                .json(format!("{{ 'access': '{}' }}", tokens.access_token))
+            let result = LoginResult {
+                token: tokens.access_token,
+                user,
+            };
+
+            HttpResponse::Ok().cookie(cookie).json(result)
         }
         None => {
-            // Handle error there
-            // Possible states: User is not found, password is not correct and other errors
-            HttpResponse::Forbidden().into()
+            let error = ErrorResult {
+                code: "USER_NOT_FOUND".to_string(),
+                message: "User is not exist, check login and try again".to_string(),
+            };
+            HttpResponse::Forbidden().json(error).into()
         }
     }
 }
 
-pub async fn register_user(credentials: Json<Credentials>) -> HttpResponse {
-    let new_user = User {
-        id: ObjectId::new(),
-        login: credentials.login.clone(),
-        password: credentials.password.clone(),
-    };
-    let not_found = true;
+pub async fn register_user(db: Data<Database>, credentials: Json<Credentials>) -> HttpResponse {
+    let credentials = credentials.into_inner();
 
-    if not_found {
-        return HttpResponse::Forbidden().json(new_user).into();
+    let result = db_register_user(db.as_ref(), credentials).await;
+
+    match result {
+        Some(id) => HttpResponse::Ok().json(id),
+        None => {
+            let error = ErrorResult {
+                code: "USER_NOT_ADDED".to_string(),
+                message: "User not added to database idk why".to_string(),
+            };
+            HttpResponse::Forbidden().json(error).into()
+        }
     }
-
-    HttpResponse::Ok().json(new_user)
 }

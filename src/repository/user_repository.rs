@@ -1,6 +1,6 @@
 use mongodb::{
-    bson::{doc, Document},
-    options::FindOneOptions,
+    bson::{doc, oid::ObjectId, Document},
+    options::{FindOneOptions, InsertOneOptions},
     Collection, Database,
 };
 
@@ -20,8 +20,28 @@ pub async fn db_login_user(db: &Database, credentials: Credentials) -> Option<Us
     match result {
         Ok(user) => user,
         Err(error) => {
-            println!("👽 Failed to execute query... Idk why");
-            println!("👽 Here is error: {:?}", error);
+            println!("😿 db_login_user 🪲 {:?}", error);
+            None
+        }
+    }
+}
+
+pub async fn db_register_user(db: &Database, credentials: Credentials) -> Option<ObjectId> {
+    let users: Collection<User> = db.collection("users");
+
+    let user = User {
+        id: ObjectId::new(),
+        login: credentials.login.clone(),
+        password: credentials.password.clone(),
+    };
+    let options = InsertOneOptions::builder().build();
+
+    let result = users.insert_one(user, options).await;
+
+    match result {
+        Ok(user) => user.inserted_id.as_object_id(),
+        Err(error) => {
+            println!("😿 db_register_user 🪲 {:?}", error);
             None
         }
     }
