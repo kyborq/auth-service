@@ -1,17 +1,16 @@
 use mongodb::{
-    bson::{doc, oid::ObjectId, Document},
-    options::{FindOneOptions, InsertOneOptions},
+    bson::{doc, Document},
+    options::FindOneOptions,
     Collection, Database,
 };
 
-use crate::models::{Credentials, User};
+use crate::models::User;
 
-pub async fn db_login_user(db: &Database, credentials: Credentials) -> Option<User> {
+pub async fn db_get_user_by_login(db: &Database, login: String) -> Option<User> {
     let users: Collection<User> = db.collection("users");
 
     let filter: Document = doc! {
-      "login": credentials.login,
-      "password": credentials.password
+      "login": login,
     };
     let options = FindOneOptions::builder().build();
 
@@ -20,28 +19,7 @@ pub async fn db_login_user(db: &Database, credentials: Credentials) -> Option<Us
     match result {
         Ok(user) => user,
         Err(error) => {
-            println!("😿 db_login_user 🪲 {:?}", error);
-            None
-        }
-    }
-}
-
-pub async fn db_register_user(db: &Database, credentials: Credentials) -> Option<ObjectId> {
-    let users: Collection<User> = db.collection("users");
-
-    let user = User {
-        id: ObjectId::new(),
-        login: credentials.login.clone(),
-        password: credentials.password.clone(),
-    };
-    let options = InsertOneOptions::builder().build();
-
-    let result = users.insert_one(user, options).await;
-
-    match result {
-        Ok(user) => user.inserted_id.as_object_id(),
-        Err(error) => {
-            println!("😿 db_register_user 🪲 {:?}", error);
+            println!("😿 db_get_user_by_login 🪲 {:?}", error);
             None
         }
     }

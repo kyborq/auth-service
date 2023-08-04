@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::{
     models::{Credentials, User},
-    repository::user_repository::{db_login_user, db_register_user},
+    repository::{db_get_user_by_login, db_login_user, db_register_user},
     services::token_service::generate_tokens,
 };
 
@@ -62,16 +62,26 @@ pub async fn login_user(db: Data<Database>, credentials: Json<Credentials>) -> H
 pub async fn register_user(db: Data<Database>, credentials: Json<Credentials>) -> HttpResponse {
     let credentials = credentials.into_inner();
 
-    let result = db_register_user(db.as_ref(), credentials).await;
+    let existense = db_get_user_by_login(db.as_ref(), credentials.login.clone()).await;
 
-    match result {
-        Some(id) => HttpResponse::Ok().json(id),
-        None => {
-            let error = ErrorResult {
-                code: "USER_NOT_ADDED".to_string(),
-                message: "User not added to database idk why".to_string(),
-            };
-            HttpResponse::Forbidden().json(error).into()
+    if Option::is_some(&existense) {
+        let result = db_register_user(db.as_ref(), credentials).await;
+
+        match result {
+            Some(id) => HttpResponse::Ok().json(id),
+            None => {
+                let error = ErrorResult {
+                    code: "USER_NOT_ADDED".to_string(),
+                    message: "User not added to database idk why".to_string(),
+                };
+                HttpResponse::Forbidden().json(error).into()
+            }
         }
+    } else {
+        let error = ErrorResult {
+            code: "USER_ALREADY_EXISTS".to_string(),
+            message: "User already exists".to_string(),
+        };
+        HttpResponse::Forbidden().json(error).into()
     }
 }
